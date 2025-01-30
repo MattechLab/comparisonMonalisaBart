@@ -6,6 +6,18 @@ __pycache__/
 # C extensions
 *.so
 
+# MATLAB AUTOSAVE FILES
+*.asv
+
+# macos dsstore
+.DS_Store
+
+#tempsavebartfiles
+l2reconweight.cfl
+l1reconweight.cfl
+l2reconweight.hdr
+l1reconweight.hdr
+
 # Distribution / packaging
 .Python
 build/
