@@ -16,9 +16,9 @@ We compare both frameworks using L1 and L2 regularization-based reconstructions.
 
 The regularized reconstruction problem is formulated as:
 
-\[
+$$
 x^* = \arg\min_x \| A x - y \|_2^2 + \lambda R(x)
-\]
+$$
 
 where the regularization term \( R(x) \) influences the reconstructed image magnitude. Since Structural Similarity Index (SSIM) and L2-distance metrics are sensitive to image scaling, we rescale the reconstructed images post-reconstruction. This rescaling is performed to match the mean intensity of the ground truth image within a manually selected elliptical region of interest (ROI).
 
