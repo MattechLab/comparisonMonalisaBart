@@ -31,9 +31,21 @@ t_tot = bmTraj_fullRadial2_lineAssym2(N, nLines, dK_u(1));
 y = bmSimulateMriData(image, C, t_tot, N_u, n_u, dK_u);
 The corresponding volume elements or density compensation function weights are also computed.
 4. **Reconstruction & Evaluation**:
-- L1- and L2-regularized iterative reconstructions are performed for both frameworks, using 140 iterations (ensuring convergence).
+- L1-regularized
+  
+$$
+x^* = \arg\min_x \| A x - y \|_2^2 + \lambda \| x \|_1
+$$
+  
+  and L2-regularized
+  
+$$
+x^* = \arg\min_x \| A x - y \|_2^2 + \lambda \| x \|_2
+$$
+
+  iterative reconstructions are performed for both frameworks, using 140 iterations (ensuring convergence). \lambda is the regularization parameter
 - The reconstructed images are rescaled to match the mean intensity of the ground truth within the ROI.
-- SSIM is computed for various regularization values, and the best-performing parameter (highest SSIM) is selected.
+- SSIM is computed for various regularization values, and the best-performing parameter (highest SSIM) is selected and reported.
 
 ## Results
 
