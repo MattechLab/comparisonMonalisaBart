@@ -49,4 +49,49 @@ $$
 
 ## Results
 
-The best SSIM values for each of the four images are reported for both reconstruction frameworks, providing a quantitative comparison of their performance.
+The best SSIM values for each of the four images are reported for both reconstruction frameworks, providing a quantitative comparison of their performance. 
+
+Images reconstructed with l1 and l2 regularization are presented below respectively. The quantitative metrics are reported accordingly. l2 distance computes the sum of squared differences between corresponding pixel intensities in two images. It is a straightforward, pixel-wise error measure of the reconstruction that treats every pixel equally. SSIM, on the other hand, is designed to mimic the human visual system by considering perceptual phenomena. It evaluates image quality based on three key components: luminance, contrast, and structure. Visually, for cardiac images both frameworks yield similar image quality, while for the brain and the phantom image, BART's reconstructions seems more affected by artifacts. Moreover, the reported metrics reveal a trade-off: when one framework achieves a higher \gls{ssim} score, the other tends to have a lower l2 distance, indicating that neither framework consistently produces superior image reconstructions. 
+
+![l1images](https://github.com/user-attachments/assets/359fd59a-159d-405c-997a-b0c417d07e53)
+![l2images](https://github.com/user-attachments/assets/47c91043-3c43-4c18-893c-7a0239ab9bfd)
+
+## Comparison of l1-regularized reconstructions
+
+| Metric          | Gridded Recon | Monalisa l1-Reg | BART l1-Reg |
+|----------------|--------------|----------------|-------------|
+| **Phantom**    |              |                |             |
+| **SSIM**       | 0.3789       | 0.5867         | **0.6883**  |
+| **l2-Distance**| 93.1373      | **29.3729**    | 52.0827     |
+| **Brain**      |              |                |             |
+| **SSIM**       | 0.2391       | 0.5332         | **0.5645**  |
+| **l2-Distance**| 28553.3950   | **13523.8670** | 13531.1620  |
+| **Cardiac (Close)** |        |                |             |
+| **SSIM**       | 0.7227       | 0.8342         | **0.8448**  |
+| **l2-Distance**| 28.4789      | **17.9613**    | 17.9725     |
+| **Cardiac (Far)** |          |                |             |
+| **SSIM**       | 0.4818       | **0.7930**     | 0.7503      |
+| **l2-Distance**| 103.8571     | **43.4874**    | 59.4864     |
+
+*Comparison of l1-regularized reconstructions between BART and Monalisa, including Gridded Reconstructions as a baseline. The best values are in **bold**.*
+
+---
+
+## Comparison of l2-regularized reconstructions
+
+| Metric          | Gridded Recon | Monalisa l2-Reg | BART l2-Reg |
+|----------------|--------------|----------------|-------------|
+| **Phantom**    |              |                |             |
+| **SSIM**       | 0.3789       | **0.5049**     | 0.4670      |
+| **l2-Distance**| 93.1373      | 47.4290        | **47.0134** |
+| **Brain**      |              |                |             |
+| **SSIM**       | 0.2391       | 0.5370         | **0.5567**  |
+| **l2-Distance**| 28553.3950   | **13309.8610** | 15796.3090  |
+| **Cardiac (Close)** |        |                |             |
+| **SSIM**       | 0.7227       | 0.8388         | **0.8501**  |
+| **l2-Distance**| 28.4789      | 18.0503        | **17.3688** |
+| **Cardiac (Far)** |          |                |             |
+| **SSIM**       | 0.4818       | **0.8008**     | 0.7438      |
+| **l2-Distance**| 103.8571     | **49.7409**    | 60.3805     |
+
+*Comparison of L2-regularized reconstructions between BART and Monalisa, including Gridded Reconstructions as a baseline. The best values are in **bold**.*
