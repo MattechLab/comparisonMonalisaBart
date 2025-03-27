@@ -2,7 +2,7 @@
 
 This repository provides a comparative analysis of Monalisa and BART reconstructions on four different 2D images. The goal is not to establish superiority of any framework but rather to demonstrate that Monalisa achieves results comparable to other well-known open-source frameworks.
 
-We compare both frameworks using L1 and L2 regularization-based reconstructions. To objectively assess the reconstruction quality, we generate synthetic raw MRI measurements, denoted as \( y \), starting from known ground truth images. These synthetic measurements serve as raw data for reconstruction using both frameworks. To ensure fair comparison, we perform a grid search to determine the optimal regularization parameters for each framework. The undersampling strategy follows a 2D radial trajectory with 30 lines of 512 points each, a challenging scenario that highlights the impact of regularization.
+We compare both frameworks using L1 and L2 regularization-based reconstructions. To objectively assess the reconstruction quality, we generate synthetic raw MRI measurements, denoted as \( y \), starting from known ground truth images. These synthetic measurements serve as raw data for reconstruction using both frameworks. To ensure fair comparison, we perform a grid search to determine the optimal regularization parameters for each framework. The undersampling strategy follows a 2D radial trajectory with 30 lines of 512 points each, a challenging scenario that highlights the positive impact of regularization.
 
 ## Repository Structure
 
