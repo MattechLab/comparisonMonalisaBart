@@ -9,6 +9,46 @@ from matplotlib.patches import Ellipse
 import ipywidgets as widgets
 from IPython.display import display
 
+# Function to normalize an image based on the ROI
+def normalize_within_roi(image, groundtruth, roi_params, debug = False):
+    """
+    Normalize the image by the mean within the elliptical ROI based on the ground truth.
+    
+    Parameters:
+    - image (ndarray): The reconstructed image.
+    - groundtruth (ndarray): The ground truth image.
+    - roi_params (dict): Ellipse parameters including center_x, center_y, major_axis, minor_axis, and angle.
+
+    Returns:
+    - ndarray: Normalized image.
+    """
+    image = abs(image)
+    groundtruth = abs(groundtruth)
+    
+    mask = np.zeros_like(groundtruth, dtype=bool)
+    y, x = np.ogrid[:groundtruth.shape[0], :groundtruth.shape[1]]
+    
+    # Ellipse equation: ((x - center_x) * cos(angle) + (y - center_y) * sin(angle))^2 / major_axis^2 
+    #                + ((x - center_x) * sin(angle) - (y - center_y) * cos(angle))^2 / minor_axis^2 <= 1
+    ellipse = (
+        ((x - roi_params["center_x"]) * np.cos(np.deg2rad(roi_params["angle"])) +
+            (y - roi_params["center_y"]) * np.sin(np.deg2rad(roi_params["angle"]))) ** 2 / roi_params["major_axis"] ** 2 +
+        ((x - roi_params["center_x"]) * np.sin(np.deg2rad(roi_params["angle"])) -
+            (y - roi_params["center_y"]) * np.cos(np.deg2rad(roi_params["angle"]))) ** 2 / roi_params["minor_axis"] ** 2 <= 1
+    )
+    mask[ellipse] = True
+    # Debugging: Display the mask (It's correct!)
+    if debug:
+        plt.figure(figsize=(6, 6))
+        plt.imshow(mask, cmap='gray')
+        plt.title('ROI Mask')
+        plt.axis('off')
+        plt.show()
+        
+    mean_gt = np.mean(groundtruth[mask])
+    mean_recon = np.mean(image[mask])
+    return image * (mean_gt / mean_recon)
+
 def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse_params=None, iterations = 30):
     """
     Evaluate the performance of BART reconstructions over a range of regularization parameters with ROI-based normalization.
@@ -34,51 +74,13 @@ def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse
             ellipse_params = {"center_x": 250, "center_y": 234, "major_axis": 107, "minor_axis": 95, "angle": 75}
         elif prefix == 'cardiac2':
             ellipse_params = {"center_x": 262, "center_y": 217, "major_axis": 100, "minor_axis": 132, "angle": 145}
-        else:
+        elif prefix == 'cardiac3':
+            ellipse_params = {"center_x": 273, "center_y": 268, "major_axis": 128, "minor_axis": 128, "angle": 0}
+        else:   
             raise ValueError(f"Invalid prefix provided: {prefix}")
 
     # Load the ground truth image: need to adjust the naming convention
     groundtruth = cfl.readcfl(f'./bart_data/final{prefix}image')
-
-    # Function to normalize an image based on the ROI
-    def normalize_within_roi(image, groundtruth, roi_params, debug = False):
-        """
-        Normalize the image by the mean within the elliptical ROI based on the ground truth.
-        
-        Parameters:
-        - image (ndarray): The reconstructed image.
-        - groundtruth (ndarray): The ground truth image.
-        - roi_params (dict): Ellipse parameters including center_x, center_y, major_axis, minor_axis, and angle.
-
-        Returns:
-        - ndarray: Normalized image.
-        """
-        image = abs(image)
-        groundtruth = abs(groundtruth)
-        
-        mask = np.zeros_like(groundtruth, dtype=bool)
-        y, x = np.ogrid[:groundtruth.shape[0], :groundtruth.shape[1]]
-        
-        # Ellipse equation: ((x - center_x) * cos(angle) + (y - center_y) * sin(angle))^2 / major_axis^2 
-        #                + ((x - center_x) * sin(angle) - (y - center_y) * cos(angle))^2 / minor_axis^2 <= 1
-        ellipse = (
-            ((x - roi_params["center_x"]) * np.cos(np.deg2rad(roi_params["angle"])) +
-             (y - roi_params["center_y"]) * np.sin(np.deg2rad(roi_params["angle"]))) ** 2 / roi_params["major_axis"] ** 2 +
-            ((x - roi_params["center_x"]) * np.sin(np.deg2rad(roi_params["angle"])) -
-             (y - roi_params["center_y"]) * np.cos(np.deg2rad(roi_params["angle"]))) ** 2 / roi_params["minor_axis"] ** 2 <= 1
-        )
-        mask[ellipse] = True
-        # Debugging: Display the mask (It's correct!)
-        if debug:
-            plt.figure(figsize=(6, 6))
-            plt.imshow(mask, cmap='gray')
-            plt.title('ROI Mask')
-            plt.axis('off')
-            plt.show()
-            
-        mean_gt = np.mean(groundtruth[mask])
-        mean_recon = np.mean(image[mask])
-        return image * (mean_gt / mean_recon)
 
     # Initialize arrays to store metrics and commands
     l2_distances = []
@@ -100,6 +102,10 @@ def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse
             
         subprocess.run(bart_command, shell=True)
         reconstructed = cfl.readcfl(f'{regtype}reconweight')
+        plt.imshow(abs(reconstructed), cmap="gray")  # Use grayscale colormap
+        plt.colorbar()  # Optional: Show color scale
+        plt.axis("off")  # Hide axes
+        plt.show()
         reconstructed = normalize_within_roi(reconstructed, groundtruth, ellipse_params)
         l2_distances.append(float(np.sqrt(np.sum((abs(groundtruth) - abs(reconstructed)) ** 2))))
         ssim_values.append(float(ssim(abs(groundtruth), abs(reconstructed), data_range=abs(groundtruth).max() - abs(groundtruth).min())))

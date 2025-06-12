@@ -34,9 +34,13 @@ function lineSearchrecon(prefix, regtype, regvals)
     
     
     % Cardiac images
-    cardiacimage = abs(h{1});    
-    cardiacimage2 = abs(single(imresize(x{1}, [512, 512])));
-   
+    %cardiacimage = abs(h{1});    
+    %cardiacimage2 = abs(single(imresize(x{1}, [512, 512])));
+
+
+    cardiacimagenew = load('/Users/mauroleidi/Desktop/comparisonMonalisaBartNew/comparisonMonalisaBart/images/h_3.mat');
+    cardiacimagenew = abs(single(imresize(cardiacimagenew.h, [512, 512])));
+
     % Select the image and ellipse based on prefix
     switch prefix
         case 'phantom'
@@ -45,12 +49,15 @@ function lineSearchrecon(prefix, regtype, regvals)
         case 'brain'
             image = finalbrainimage;
             ellipse = [271, 250, 202, 220, 0];
-        case 'cardiac'
-            image = cardiacimage;
-            ellipse = [250, 234, 107, 95, 75];
-        case 'cardiac2'
-            image = cardiacimage2;
-            ellipse = [262, 217, 100, 132, 145];
+        %case 'cardiac'
+            %image = cardiacimage;
+            %ellipse = [250, 234, 107, 95, 75];
+        %case 'cardiac2'
+            %image = cardiacimage2;
+            %ellipse = [262, 217, 100, 132, 145];
+        case 'cardiacnew'
+            image = cardiacimagenew;
+            ellipse = [273, 268, 128, 128, 0];
         otherwise
             error('Invalid prefix provided.');
     end

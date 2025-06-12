@@ -55,12 +55,15 @@ bmImage(cardiacimage);
 cardiacimage2 = abs(single(imresize(x{1}, [512, 512])));
 bmImage(cardiacimage2);
 
+cardiacimage3 = load('./images/h_3.mat');
+cardiacimage3 = abs(single(imresize(cardiacimage3.h, [512, 512])));
+
 %% SAVE IN BART FORMAT: naming convention is final + prefix + image
 writecfl('bart_data/finalphantomimage', shepp_logan_phantom);
 writecfl('bart_data/finalbrainimage', finalbrainimage);
 writecfl('bart_data/finalcardiacimage', cardiacimage);
 writecfl('bart_data/finalcardiac2image', cardiacimage2);
-
+writecfl('bart_data/finalcardiac3image', cardiacimage3);
 C = bmImResize(C, [64, 64], N_u);
 % Convert and save Coil Sensitivities (C)
 C_reshaped = reshape(C, [512, 512, 1, 30]);
@@ -72,7 +75,8 @@ image_prefix_pairs = {...
 shepp_logan_phantom, 'phantom'; ...
 finalbrainimage, 'brain'; ...
 cardiacimage, 'cardiac'; ...
-cardiacimage2, 'cardiac2'};
+cardiacimage2, 'cardiac2'; ...
+cardiacimage3, 'cardiac3'};
 
 % 1. SIMULATED TRAJECTORY t_tot
 nLines = 30;
@@ -122,8 +126,15 @@ for i = 1:size(image_prefix_pairs, 1)
     
     % Write k-space data
     writecfl(['bart_data/kspace_bart', prefix], kspace_bart);
+
+    % Run gridded recon (Mathilda), and save the cfl files
+    % GRIDDED RECON:
+    griddedrecon = bmMathilda(y,t_tot,ve_srt_cap,C, N_u, n_u, dK_u);
+    writecfl(['reconstructions/griddedrecons/gridded_recon_final_', prefix], griddedrecon);
 end
 
+
+    
 
 
 
