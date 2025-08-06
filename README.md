@@ -81,6 +81,8 @@ Images reconstructed with l1 and l2 regularization are presented below respectiv
 
 *Comparison of l1-regularized reconstructions between BART and Monalisa, including Gridded Reconstructions as a baseline. The best values are in **bold**.*
 
+![l1RegResults](/results/comparisonL1Image_goodcontrast.png)
+
 ---
 
 ## Comparison of l2-regularized reconstructions
@@ -98,3 +100,5 @@ Images reconstructed with l1 and l2 regularization are presented below respectiv
 | **l2-Distance**| 31.3764      | **15.6514**    | 20.3854     |
 
 *Comparison of L2-regularized reconstructions between BART and Monalisa, including Gridded Reconstructions as a baseline. The best values are in **bold**.*
+
+![l2RegResults](/results/comparisonL2Image_goodcontrast.png)
