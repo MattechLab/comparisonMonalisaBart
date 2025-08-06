@@ -3,7 +3,7 @@ function [] = convergencePlot(prefix,regtype)
 %image generate a convergence plot for the iterative reconstruction.
 %   Given a wintessInfo object and the associated ground truth
 %    image generate a convergence plot for the iterative reconstruction.
-witnessInfoPath = ['./wit_monalisa_final_recon_',prefix,'_',regtype '.mat'];
+witnessInfoPath = ['./witnessInfos/wit_monalisa_final_recon_',prefix,'_',regtype '.mat'];
 N = 256;
 switch prefix
         case 'phantom'
