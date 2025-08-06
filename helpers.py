@@ -49,7 +49,7 @@ def normalize_within_roi(image, groundtruth, roi_params, debug = False):
     mean_recon = np.mean(image[mask])
     return image * (mean_gt / mean_recon)
 
-def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse_params=None, iterations = 30):
+def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse_params=None, iterations = 160):
     """
     Evaluate the performance of BART reconstructions over a range of regularization parameters with ROI-based normalization.
 
@@ -67,20 +67,16 @@ def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse
     # Set default ellipse parameters if not provided
     if ellipse_params is None:
         if prefix == 'phantom':
-            ellipse_params = {"center_x": 258, "center_y": 254, "major_axis": 176, "minor_axis": 235, "angle": 0}
-        elif prefix == 'brain':
-            ellipse_params = {"center_x": 271, "center_y": 250, "major_axis": 202, "minor_axis": 220, "angle": 0}
+            ellipse_params = {"center_x": 129, "center_y": 127, "major_axis": 88, "minor_axis": 117.5, "angle": 0}
+        elif prefix == 'eye':
+            ellipse_params = {"center_x": 127, "center_y": 85, "major_axis": 85, "minor_axis": 110, "angle": 0}
         elif prefix == 'cardiac':
-            ellipse_params = {"center_x": 250, "center_y": 234, "major_axis": 107, "minor_axis": 95, "angle": 75}
-        elif prefix == 'cardiac2':
-            ellipse_params = {"center_x": 262, "center_y": 217, "major_axis": 100, "minor_axis": 132, "angle": 145}
-        elif prefix == 'cardiac3':
-            ellipse_params = {"center_x": 273, "center_y": 268, "major_axis": 128, "minor_axis": 128, "angle": 0}
+            ellipse_params = {"center_x": 143, "center_y": 132.5, "major_axis": 64, "minor_axis": 45, "angle": 68}
         else:   
             raise ValueError(f"Invalid prefix provided: {prefix}")
 
     # Load the ground truth image: need to adjust the naming convention
-    groundtruth = cfl.readcfl(f'./bart_data/final{prefix}image')
+    groundtruth = cfl.readcfl(f'./bart_data/image_bart_{prefix}')
 
     # Initialize arrays to store metrics and commands
     l2_distances = []
@@ -91,13 +87,13 @@ def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse
     for regul_param in regvals:
         if regtype == 'l2':
             bart_command = (
-                f"./bart/bart pics -r{regul_param} -l2 -i{iterations} -t ./bart_data/traj_bart "
-                f"-p ./bart_data/weights_bart_scaled ./bart_data/kspace_bart{prefix} ./bart_data/C_bart {regtype}reconweight"
+                f"./bart/bart pics -r{regul_param} -l2 -i{iterations} -t ./bart_data/traj_bart_{prefix} "
+                f"-p ./bart_data/weights_bart_{prefix}_scaled ./bart_data/kspace_bart_{prefix} ./bart_data/C_bart_{prefix} {regtype}reconweight"
             )
         elif regtype == 'l1':
             bart_command = (
-                f"./bart/bart pics -R I:1:{regul_param} -i{iterations} -m -u {10*regul_param} -t ./bart_data/traj_bart "
-                f"-p ./bart_data/weights_bart_scaled ./bart_data/kspace_bart{prefix} ./bart_data/C_bart {regtype}reconweight"
+                f"./bart/bart pics -R I:1:{regul_param} -i{iterations} -m -u {10*regul_param} -t ./bart_data/traj_bart_{prefix} "
+                f"-p ./bart_data/weights_bart_{prefix}_scaled ./bart_data/kspace_bart_{prefix} ./bart_data/C_bart_{prefix} {regtype}reconweight"
             )
             
         subprocess.run(bart_command, shell=True)
@@ -232,8 +228,3 @@ def select_roi(image):
 
     # Return the final ellipse parameters once the button is clicked
     return ellipse_parameters
-
-
-
-
-

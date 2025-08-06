@@ -1,130 +1,82 @@
 % generate the simulated rawdata for the comparison.
 clear;
 close all;
+% add monalisa to path
+addpath(genpath('/Users/mauroleidi/Desktop/monalisa/src')); 
 
-regvals = [logspace(0, 2, 10)];
+regvals = [logspace(-1.5, 1.5, 40)];
 prefix = 'phantom';
 regtype = 'l1';
-lineSearchrecon(prefix, regtype, regvals);
+lineSearchrecon(prefix, regtype, regvals); % Best regval = 0.91525
 
 
-regvals = [logspace(-4, 4, 40)];
+regvals = [logspace(-1.5, 1.5, 40)];
 prefix = 'phantom';
 regtype = 'l2';
-lineSearchrecon(prefix, regtype, regvals);
+lineSearchrecon(prefix, regtype, regvals); % Best regval = 0.76668
 
 
-regvals = [logspace(-4, 4, 40)];
-prefix = 'brain';
+regvals = [logspace(-2, 1, 40)];
+prefix = 'eye';
 regtype = 'l1';
-lineSearchrecon(prefix, regtype, regvals);
+lineSearchrecon(prefix, regtype, regvals); % Best regval = 0.28943
 
-regvals = [logspace(-4, 4, 40)];
-prefix = 'brain';
+regvals = [logspace(-1, 1, 40)];
+prefix = 'eye';
 regtype = 'l2';
-lineSearchrecon(prefix, regtype, regvals);
+lineSearchrecon(prefix, regtype, regvals); % Best regval = 1.3434
 
-
-%regvals = [logspace(-4, 4, 40)];
-%prefix = 'cardiac';
-%regtype = 'l1';
-%lineSearchrecon(prefix, regtype, regvals);
-
-
-%regvals = [logspace(-4, 4, 40)];
-%prefix = 'cardiac';
-%regtype = 'l2';
-%lineSearchrecon(prefix, regtype, regvals);
-
-%regvals = [logspace(-4, 4, 40)];
-%prefix = 'cardiac2';
-%regtype = 'l1';
-%lineSearchrecon(prefix, regtype, regvals);
-
-
-%regvals = [logspace(-4, 4, 15)];
-%prefix = 'cardiac2';
-%regtype = 'l2';
-%lineSearchrecon(prefix, regtype, regvals); 
-
-regvals = [logspace(-4, 4, 40)];
-prefix = 'cardiacnew';
+regvals = [logspace(-3, 0, 40)];
+prefix = 'cardiac';
 regtype = 'l1';
-lineSearchrecon(prefix, regtype, regvals); %0.074438
+lineSearchrecon(prefix, regtype, regvals); % Best regval = 0.02309
 
 
-regvals = [logspace(-4, 4, 15)];
-prefix = 'cardiacnew';
+regvals = [logspace(-2, 0, 40)];
+prefix = 'cardiac';
 regtype = 'l2';
-lineSearchrecon(prefix, regtype, regvals);
+lineSearchrecon(prefix, regtype, regvals); % Best regval = 0.27283
 
-%% CONVERGENCE CHECK (just an example on how you can check convergence of your reconstructions, NOT NEEDED HERE)
-nIter = 35;
-nCGD = 4;
-witness_ind = 1:5:nIter;
-frameSize = n_u;
-rho = 10*delta; % this should be somewhat adapted too.
-witness_info = bmWitnessInfo(witness_label, witness_ind);
-witness_info.save_witnessIm_flag = true;
-x = bmSleva(x0, y, ve, C, Gu, Gut, n_u, bestregval, regul_mode, nCGD, ve_max, ...
-                    nIter,witness_info );
-% Let's have a look
-whatever = load('wit_label.mat');
-bmImage(whatever.witnessInfo.witness_im)
-bmImage(image - whatever.witnessInfo.witness_im)
+%% CONVERGENCE CHECK : %% MAKE CONVERGENCE PLOT FROM WITNESS_INFO
+
+prefix = 'cardiac';
+regtype = 'l2';
+convergencePlot(prefix,regtype) % this automatically load the witnessinfo object
 
 %% RUN FINAL RECONSTRUCTIONS AND SAVE RESULTS
 
 prefix = 'phantom';
 regtype = 'l1';
-bestregval = 0.651245;
+bestregval = 0.91525;
 runFinalReconstruction(prefix, regtype, bestregval)
+convergencePlot(prefix,regtype)
 
 prefix = 'phantom';
 regtype = 'l2';
-bestregval = 0.78965;
+bestregval = 0.76668;
 runFinalReconstruction(prefix, regtype, bestregval)
+convergencePlot(prefix,regtype)
 
-prefix = 'brain';
+prefix = 'eye';
 regtype = 'l1';
-bestregval = 0.307;
+bestregval = 0.28943;
 runFinalReconstruction(prefix, regtype, bestregval)
+convergencePlot(prefix,regtype)
 
-prefix = 'brain';
+prefix = 'eye';
 regtype = 'l2';
-bestregval = 0.046416;
+bestregval = 1.3434;
 runFinalReconstruction(prefix, regtype, bestregval)
+convergencePlot(prefix,regtype)
 
-%prefix = 'cardiac';
-%regtype = 'l1';
-%bestregval = 0.0017013;
-%runFinalReconstruction(prefix, regtype, bestregval)
-
-%prefix = 'cardiac';
-%regtype = 'l2';
-%bestregval = 0.30703;
-%runFinalReconstruction(prefix, regtype, bestregval)
-
-
-%prefix = 'cardiac2';
-%regtype = 'l1';
-%bestregval = 0.19145;
-%runFinalReconstruction(prefix, regtype, bestregval)
-
-
-%prefix = 'cardiac2';
-%regtype = 'l2';
-%bestregval = 0.49239;
-%runFinalReconstruction(prefix, regtype, bestregval)
-
-prefix = 'cardiacnew';
+prefix = 'cardiac';
 regtype = 'l1';
-bestregval = 0.074438;
+bestregval = 0.02309;
 runFinalReconstruction(prefix, regtype, bestregval)
+convergencePlot(prefix,regtype)
 
-
-prefix = 'cardiacnew';
+prefix = 'cardiac';
 regtype = 'l2';
-bestregval = 0.49239;
+bestregval = 0.27283;
 runFinalReconstruction(prefix, regtype, bestregval)
-
+convergencePlot(prefix,regtype)

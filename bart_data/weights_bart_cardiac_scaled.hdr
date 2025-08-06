@@ -1,0 +1,8 @@
+# Dimensions
+1 256 30 1 1 1 1 1 1 1 1 1 1 1 1 1 
+# Command
+scale 0.002 ./bart_data/weights_bart_cardiac ./bart_data/weights_bart_cardiac_scaled 
+# Files
+ >./bart_data/weights_bart_cardiac_scaled <./bart_data/weights_bart_cardiac
+# Creator
+BART v0.9.00-678-g94470d0

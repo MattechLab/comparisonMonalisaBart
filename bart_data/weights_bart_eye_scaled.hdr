@@ -1,0 +1,8 @@
+# Dimensions
+1 256 30 1 1 1 1 1 1 1 1 1 1 1 1 1 
+# Command
+scale 0.002 ./bart_data/weights_bart_eye ./bart_data/weights_bart_eye_scaled 
+# Files
+ >./bart_data/weights_bart_eye_scaled <./bart_data/weights_bart_eye
+# Creator
+BART v0.9.00-678-g94470d0

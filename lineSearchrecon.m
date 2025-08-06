@@ -1,69 +1,57 @@
 function lineSearchrecon(prefix, regtype, regvals)
     % LINESEARCHRECON - Find the best regularization parameters for L1 and L2
     % regularized reconstructions. Save the values and plot the curves.
-    load('./images/x_cartesian.mat')
-    % add monalisa to path
-    addpath(genpath('/Users/mauroleidi/Desktop/monalisa/src')); 
-    
-    % read the ground truth image (NB: this has to be replaced afterwards)
-    cinefilepaht = './images/radial_2D_CINE_bastien.mat';
-    load(cinefilepaht);
-    
-    % Define the size of the phantom image
-    N = 512; % Size of the image (e.g., 256x256)
-    % Generate the 2D Shepp-Logan phantom
-    shepp_logan_phantom = phantom('Shepp-Logan', N);
-    shepp_logan_phantom = single(min(10*shepp_logan_phantom,1));
-    
-    %% 2D brain image
-    
-    % Load the PNG image
-    brainimage = imread('./images/brain_image.png');
-    % Convert to grayscale
-    gray_brainimage = rgb2gray(brainimage);
-    % Crop the center (367x367) from the original image
-    shift = 11;
-    crop_size = 367;
-    center_x = round(size(gray_brainimage, 2) / 2) - shift; % X center of the image
-    center_y = round(size(gray_brainimage, 1) / 2); % Y center of the image
-    % Crop the image around the center
-    cropped_brainimage = gray_brainimage(center_y - floor(crop_size/2) + 1:center_y + floor(crop_size/2), ...
-                                          center_x - floor(crop_size/2) + 1:center_x + floor(crop_size/2));
-    % Resize the cropped image to 512x512
-    finalbrainimage = single(imresize(cropped_brainimage, [512, 512]));
-    
-    
-    % Cardiac images
-    %cardiacimage = abs(h{1});    
-    %cardiacimage2 = abs(single(imresize(x{1}, [512, 512])));
+    %
+    % inputs: prefix (can be ['eye','phantom','cardiac'] identifies which
+    % image to use), regtype (can be ['l1','l2'] identifies the type of
+    % regularization in the reconstruction), regvals (list of regualarization values to test)
+    %This function will:
+    % 1. Generate the simulated data
+    % 2. Run the reconstruction for many different regularization values,
+    % all of them are contained in regvals
+    % 3. Normalize the reconstruction results on the ROI, so that it
+    % matches the groud truth
+    % 4. Plot l2distances and ssim, to identify the best regval.
 
 
-    cardiacimagenew = load('/Users/mauroleidi/Desktop/comparisonMonalisaBartNew/comparisonMonalisaBart/images/h_3.mat');
-    cardiacimagenew = abs(single(imresize(cardiacimagenew.h, [512, 512])));
-
-    % Select the image and ellipse based on prefix
+    %% accquisition and recon parameters
+    
+    N       = 256; % Size of the image (e.g., 256x256)
+    N_u     = [256, 256];
+    n_u     = N_u;
+    nLines  = 30;
+    
+    % Select the ground truth image and ellipse based on prefix
+    % Select the coil sense accordingly
+    % Create an ellipse on the ROI 
     switch prefix
         case 'phantom'
-            image = shepp_logan_phantom;
-            ellipse = [258, 254, 176, 235, 0]; 
-        case 'brain'
-            image = finalbrainimage;
-            ellipse = [271, 250, 202, 220, 0];
-        %case 'cardiac'
-            %image = cardiacimage;
-            %ellipse = [250, 234, 107, 95, 75];
-        %case 'cardiac2'
-            %image = cardiacimage2;
-            %ellipse = [262, 217, 100, 132, 145];
-        case 'cardiacnew'
-            image = cardiacimagenew;
-            ellipse = [273, 268, 128, 128, 0];
-        otherwise
-            error('Invalid prefix provided.');
-    end
+            load('./images/C_simu.mat'); % Load the simulated coil sensitivity for the phantom
+            C = bmImResize(C, [96, 96], [N,N]); % fix C to same dimentions
+            image = single(phantom('Modified Shepp-Logan', N));
+            ellipse = [129, 127, 88, 117.5, 0]; % Ellipse on the phantom
+            FoV     = [240, 240]; % Random FoV for simulation with phantom
+        
+        case 'eye'
+            load('./images/image_eye_yiwei.mat'); % Load the brain/eye image from yiwei and the C
+            x = bmImResize(x, [480, 480], [N,N]); % downsize x to 256
+            image = single(x); 
+            C = bmImResize(C, [480, 480], [N,N]); % downsize C to 256
+            ellipse = [127, 85, 85, 110, 0]; % Ellipse on the brain
+            FoV     = [240, 240]; % double FoV yiwei
 
+        case 'cardiac'
+            load('./images/image_cardiac_bern.mat')
+            image = single(x);
+            ellipse = [143, 132.5, 64, 45, 68]; % Check if it's correct
+            FoV     = [300, 300]; % double FoV cardiac acquisition
+            
+        otherwise
+            error('Invalid prefix provided. The image does not exist');% Ellipse on the hearth
+    end
+    
+    dK_u    = 1./FoV;
     % 1. SIMULATED TRAJECTORY t_tot
-    nLines = 30;
     t_tot = bmTraj_fullRadial2_lineAssym2(N,nLines, dK_u(1));
     
     % 2. SIMULATED DATA y
@@ -71,19 +59,22 @@ function lineSearchrecon(prefix, regtype, regvals)
     % Total number of points
     numPoints = size(t_tot, 2);
     
-    C = bmImResize(C, [64, 64], N_u);
-    
     y = bmSimulateMriData(image, C, t_tot, N_u, n_u, dK_u);
     
     % 3. RUN MATHILDA: OPTIMALLY SELECT A NOT SOO NICE MATHILDA THAT IMPROVES
     
     ve = bmVolumeElement(t_tot, 'voronoi_full_radial2');
     
-    % GRIDDED RECON: Warm start
+    % GRIDDED RECON
     x0 = bmMathilda(y,t_tot,ve,C, N_u, n_u, dK_u);
     
+    % SAVE GRIDDED RECON
+
+
+    % Gridding matrices for iterative recons
     [Gu, Gut] = bmTraj2SparseMat(t_tot, ve, N_u, dK_u);
-    %% PARAMS FOR THE L2 REG reconstruction with monalisa
+
+    %% PARAMS FOR THE REG reconstruction with monalisa
     nIter = 35;
     nCGD = 4;
     witness_ind   = 1:5:nIter; % indices to save the witness
@@ -105,9 +96,8 @@ function lineSearchrecon(prefix, regtype, regvals)
             x = bmSleva(x0, y, ve, C, Gu, Gut, n_u, delta, regul_mode, nCGD, ve_max, ...
                         nIter, bmWitnessInfo(witness_label, witness_ind));
         elseif strcmp(regtype, 'l1')
-            % How to select rho?? => rule of thumb 10*delta also to bart
             frameSize = n_u;
-            rho = 10*delta; % this should be some what adapted too.
+            rho = 10*delta; % How to select rho?? => rule of thumb 10*delta also to bart
             x = bmSteva(x0, [], [], y, ve, C, Gu, Gut, frameSize, delta, rho, nCGD, ve_max, ...
                         nIter, bmWitnessInfo(witness_label, witness_ind));
         end
@@ -122,25 +112,26 @@ function lineSearchrecon(prefix, regtype, regvals)
         roi_mask = ((x_rot / major_axis).^2 + (y_rot / minor_axis).^2) <= 1;
         
         % Compute mean of the magnitude (abs) within the ROI
-        image_mean_roi = mean(abs(image(roi_mask)));
-        x_mean_roi = mean(abs(x(roi_mask)));
+        image_mean_roi = mean(abs(image(roi_mask))); % gt mean value
+        x_mean_roi = mean(abs(x(roi_mask))); % reconstruction mean value
         
         % Apply normalization if ROI mean of reconstruction is nonzero
         x = x * (image_mean_roi / x_mean_roi);
-    
-        % Get the model prediction (assuming x is the predicted image)
-        pred = abs(x);  % Ensure absolute value if it's a complex image
-    
+        pred = x;
         % Compute L2 distance between ground truth image and predicted image
-        l2distance = sqrt(sum((image(:) - pred(:)).^2));
+        diff = image(:) - pred(:);
+        l2distance = sqrt(real(diff' * diff)); % handle complex values
+
         % Append the L2 distance and regularization parameter to the arrays
         l2_distances = [l2_distances, l2distance];
     
-        % Compute SSIM
-        ssim_value = ssim(pred, image);
+        % Compute SSIM of the magnitude of the prediction w.r.t. the
+        % magnitude of the gt
+        pred_mag = abs(pred);
+        image_mag = abs(image);
+        ssim_value = ssim(pred_mag, image_mag);
         ssim_values = [ssim_values, ssim_value];
     
-        
     end
     
     [maxValue, index] = max(ssim_values);

@@ -1,8 +1,0 @@
-# Dimensions
-1 512 30 1 1 1 1 1 1 1 1 1 1 1 1 1 
-# Command
-scale 0.002 ./bart_data/weights_bart ./bart_data/weights_bart_scaled 
-# Files
- >./bart_data/weights_bart_scaled <./bart_data/weights_bart
-# Creator
-BART v0.9.00-678-g94470d0
