@@ -1,8 +1,37 @@
 # Comparison of Monalisa and BART Reconstructions
 
-This repository provides a comparative analysis of Monalisa and BART reconstructions on four different 2D images. The goal is not to establish superiority of any framework but rather to confirm that Monalisa achieves results comparable to BART.
+This repository provides a comparative analysis of Monalisa and BART reconstructions on four different 2D images. The goal is **not** to establish superiority of any framework but rather to confirm that Monalisa achieves results comparable to BART. The observed results are surprising, and the reconstruction quality gap is currently not fully understood. We believe the possible sources of discrepancies could be:  
 
-We compare both frameworks using L1 and L2 regularization-based reconstructions. To assess the reconstruction quality, we generate synthetic raw MRI measurements, denoted as \( y \), starting from known ground truth 2D images and coil sensitivities. These synthetic measurements serve as raw data for reconstruction using both frameworks. With the aim of fair comparison, we perform a grid search to determine the optimal regularization parameters for each framework separately. The undersampling strategy follows a 2D radial trajectory with 30 lines of 512 points each, a challenging scenario that highlights the positive impact of regularization.
+1. **Raw data transformation**: The raw data are synthetically generated in Monalisa format and require conversion. Although we made every effort to understand the BART data format, errors might exist. Some discussion about data format can be found here.  
+2. **Reconstruction commands**: In the absence of complete documentation, we explored BART's tutorials to understand the command-line interface. Again, mistakes might be present.  
+
+We would be grateful if anyone could spot potential mistakes. For any interested and motivated person, it might be valuable to create an unbiased website providing simulated raw data (and perhaps coil sensitivities) but **not** the ground truth. People could submit their implementations of iterative reconstructions to assess quality, potentially using a leaderboard format with Docker images returning reconstructed results.  
+
+---
+
+## Reconstruction Comparison
+
+We compare both frameworks using L1 and L2 regularization-based reconstructions. To assess reconstruction quality, we generate synthetic raw MRI measurements $y$ from known ground truth 2D images and coil sensitivities. These synthetic measurements are used as raw data for both frameworks.  
+
+To ensure fair comparison, we perform a grid search to determine optimal regularization parameters for each framework separately. Since reconstruction regularization can alter image intensity scales, direct comparison of reconstructed and reference images can be misleading. To address this, we apply an **affine intensity alignment** of the ground truth image magnitude to each reconstruction prior to computing similarity metrics:  
+
+$$
+a^\ast, b^\ast = \arg\min_{a,b} \sum_i \big(a \cdot |\mathrm{GT}_i| + b - |\mathrm{Recon}_i|\big)^2,
+$$
+
+where \(i\) indexes all voxels. The aligned ground truth is then:
+
+$$
+\mathrm{GT}' = a^\ast \cdot |\mathrm{GT}| + b^\ast
+$$
+
+This alignment preserves structural information while compensating for global scaling and offset differences. SSIM and $l_2$ distance are then computed between the reconstructed magnitude images and the aligned ground truth magnitudes.  
+
+The rationale is that SSIM and $l_2$ distance are sensitive to shifts in reconstructed image support. A global linear transformation of magnitudes does not change relative contrast or structure, which are diagnostically relevant. Aligning the ground truth ensures evaluation reflects **structural fidelity** rather than arbitrary scaling differences.  
+
+The undersampling strategy follows a 2D radial trajectory with 30 lines of 512 points each—a challenging scenario that highlights the positive impact of regularization.
+
+---
 
 ## Reconstruction Methodology
 
@@ -12,93 +41,94 @@ $$
 x^* = \arg\min_x \| A x - y \|_2^2 + \lambda R(x)
 $$
 
-where the regularization term \( R(x) \) influences both the obtained image \( x^* \) and the reconstructed image magnitude. Since Structural Similarity Index (SSIM) and L2-distance metrics are sensitive to image scaling, we rescale the reconstructed images post-reconstruction. This rescaling is performed to match the mean intensity of the ground truth image within a manually selected elliptical region of interest (ROI).
+where $R(x)$ is the regularization term influencing the reconstructed image.  
 
 ### Steps of Comparison
 
-1. **Ground Truth & ROI Selection**: We assume a known coil sensitivity map \( C \) and use three ground truth images: a phantom, an eye image, and a cardiac slice. An elliptical ROI is manually selected for each image.
-2. **Trajectory Generation**: A 2D radial trajectory, constructed by rotating each line sequentially by an angle of \(\frac{2\pi}{30}\) radians, is generated using:
+1. **Ground Truth & ROI Selection**: Three pairs of known coil sensitivity maps \(C\) and 2D images are used: a phantom, an eye image, and a cardiac slice. An elliptical ROI is manually selected for each image.  
+2. **Trajectory Generation**: A 2D radial trajectory is generated by rotating each line sequentially by \(\frac{2\pi}{30}\) radians:  
+
+```matlab
 t_tot = bmTraj_fullRadial2_lineAssym2(N, nLines, dK_u(1));
-The corresponding volume elements or density compensation function weights are also computed using:
 ve = bmVolumeElement(t_tot, 'voronoi_full_radial2');
+```
 
 3. **Data Simulation**: Raw MRI measurements are simulated using:
-y = bmSimulateMriData(image, C, t_tot, N_u, n_u, dK_u);
 
-4. **Data conversion**: The data is inherently in following the convention of Monalisa. To run BART reconstruction we need to convert the data into the BART convention (eg: change volume element definitions and generate correctly formatted  .clf and .hdr files). This is done in the generateBARTfiles.m script.
+```matlab
+y = bmSimulateMriData(image, C, t_tot, N_u, n_u, dK_u);
+```
+
+4. **Data Conversion**: Monalisa data are converted into BART format (volume element definitions, `.cfl` and `.hdr` files) using `generateBARTfiles.m`.  
 
 5. **Reconstruction & Evaluation**:
-- L1-regularized
-  
+   
+   - L1-regularized (Total Variation):
+     
 $$
-x^* = \arg\min_x \| A x - y \|_2^2 + \lambda \| x \|_1
-$$
-  
-  and L2-regularized
-  
+x^* = \arg\min_x \| A x - y \|_2^2 + TV(x)
+$$  
+   - L2-regularized:
+     
 $$
 x^* = \arg\min_x \| A x - y \|_2^2 + \lambda \| x \|_2
-$$
+$$  
 
-  iterative reconstructions are performed for both frameworks, using 140 iterations (ensuring convergence). \lambda is the regularization parameter
-- The reconstructed images are rescaled to match the mean intensity of the ground truth within the ROI.
-- SSIM is computed for various regularization values, and the best-performing parameter (highest SSIM) is selected and reported.
-
-## Repository Structure
-
-- `/images/` - Contains the three different test images: A cardiac image, a brain image with the FoV centered on the eye, and the well known Shepp-Logan phanom. The files are .mat files containing also the corresponding coil sensitivity maps used for the multicoil simulation. C_simu.mat is a simulated coil sensitivity map, that is smooth, and is used for the phantom data.
-- `generateBARTdatafiles.m` - A script that generates `.cfl` and `.hdr` files in the correct format expected by BART.
-- `run_recons_Bart.ipynb` - A jupyter notebook where we run all the bart reconstruction gridsearching for the optimal regularization value.
-- 
-- `run_recons_Monalisa.m` - A MATLAB script where we run all the Monalisa reconstruction gridsearching for the optimal regularization value. Additionally we run the final recontruction with the optimal regularization value and save the results.
-- `helpers.py` - Bulk of the python code to do the analysis.
-- `lineSearchrecon.m` - Bulk of the MATLAB code to do the analysis.
-- `/reconstructions/...` - All the resulting reconsturctions files
-- `/results/...` - Nice plots of the resulting reconstructions
-- `FinalReconsEvaluation.ipynb` - Runs the final reconstruction for BART and then generates nice plots of the reconstructions comparing both frameworks.
-
-## Results
-
-The best SSIM values for each of the four images are reported for both reconstruction frameworks, providing a quantitative comparison of their performance. 
-
-Images reconstructed with l1 and l2 regularization are presented below respectively. The quantitative metrics are reported accordingly. l2 distance computes the sum of squared differences between corresponding pixel intensities in two images. It is a straightforward, pixel-wise error measure of the reconstruction that treats every pixel equally. SSIM, on the other hand, is designed to mimic the human visual system by considering perceptual phenomena. It evaluates image quality based on three key components: luminance, contrast, and structure. Visually, for eye images both frameworks yield similar image quality, while for the cardiac and especially the phantom l1 regularized image, BART's reconstructions seems more affected by artifacts. Moreover, in the l2 regularized case the reported metrics reveal a trade-off: when one framework achieves a higher \gls{ssim} score, the other tends to have a lower l2 distance, indicating that neither framework consistently produces superior image reconstructions. 
-
-
-
-## Comparison of l1-regularized reconstructions
-
-| Metric          | Gridded Recon | Monalisa l1-Reg | BART l1-Reg |
-|----------------|--------------|----------------|-------------|
-| **Phantom**    |              |                |             |
-| **SSIM**       | 0.2492       | **0.7618**     | 0.5152      |
-| **l2-Distance**| 31.6767      | **14.1150**    | 35.5927     |
-| **Brain**      |              |                |             |
-| **SSIM**       | 0.3240       | **0.7261**     | 0.7172      |
-| **l2-Distance**| 94.8667      | **36.5786**    | 37.8975     |
-| **Cardiac (Close)** |        |                |             |
-| **SSIM**       | 0.4882       | **0.8201**     | 0.7458      |
-| **l2-Distance**| 31.3764      | **14.7013**    | 20.5866     |
-
-*Comparison of l1-regularized reconstructions between BART and Monalisa, including Gridded Reconstructions as a baseline. The best values are in **bold**.*
+   Iterative reconstructions are performed for both frameworks using 160 iterations to ensure convergence. Reconstructed images are rescaled to match the mean intensity of the ground truth within the ROI, and SSIM is computed for various regularization values to select the best-performing parameter.  
 
 ![l1RegResults](/results/comparisonL1Image_goodcontrast.png)
 
 ---
 
-## Comparison of l2-regularized reconstructions
+## Repository Structure
 
-| Metric          | Gridded Recon | Monalisa l2-Reg | BART l2-Reg |
-|----------------|--------------|----------------|-------------|
-| **Phantom**    |              |                |             |
-| **SSIM**       | 0.2492       | **0.4453**     | 0.3750      |
-| **l2-Distance**| 31.6767      | 26.6510        | **26.3846** |
-| **Brain**      |              |                |             |
-| **SSIM**       | 0.3240       | **0.7239**     | 0.6720      |
-| **l2-Distance**| 94.8667      | 42.0751        | **39.6113** |
-| **Cardiac (Close)** |        |                |             |
-| **SSIM**       | 0.4882       | **0.8158**     | 0.7275      |
-| **l2-Distance**| 31.3764      | **15.6514**    | 20.3854     |
+- `/images/` - Contains three test images: a cardiac image, a brain image with FoV centered on the eye, and the Shepp-Logan phantom. `.mat` files also include coil sensitivity maps.  
+- `generateBARTdatafiles.m` - Generates `.cfl` and `.hdr` files for BART.  
+- `run_recons_Bart.ipynb` - Runs BART reconstructions and grid search for optimal regularization.  
+- `run_recons_Monalisa.m` - Runs Monalisa reconstructions and grid search. Saves final results.  
+- `helpers.py` - Python code for analysis.  
+- `lineSearchrecon.m` - MATLAB code for analysis.  
+- `/reconstructions/...` - Resulting reconstruction files.  
+- `/results/...` - Plots of reconstructed images.  
+- `FinalReconsEvaluation.ipynb` - Runs final BART reconstructions and generates comparison plots.  
 
-*Comparison of L2-regularized reconstructions between BART and Monalisa, including Gridded Reconstructions as a baseline. The best values are in **bold**.*
+---
+
+## Results
+
+The best SSIM values for each image are reported for both frameworks, providing a quantitative comparison. L2 distance measures pixel-wise differences, while SSIM evaluates perceptual quality based on luminance, contrast, and structure.  
+
+For both $l_1$ and $l_2$ iterative reconstructions, on all the three test examples, Monalisa achieves higher SSIM values and lower $l_2$ distances. Visually, for the cardiac and phantom images, Bart reconstructions appear more affected by artifacts, especially visible in the background for the phantom and in the pulmonary vein region of the cardiac image. Our benchmarking against Bart on simulated undersampled 2D radial data demonstrates that Monalisa achieves comparable performance. The observed differences might be attributable to variations in algorithmic implementation. However, the larger **discrepancies observed in the phantom reconstruction background and in the cardiac pulmonary vein region remain unexpected, and their underlying causes have yet to be determined**.
+
+### L1-Regularized Reconstructions
+
+| Metric              | Gridded Recon | Monalisa l1-Reg | BART l1-Reg |
+| ------------------- | ------------- | --------------- | ----------- |
+| **Phantom**         |               |                 |             |
+| **SSIM**            | 0.2868        | **0.8299**      | 0.7634      |
+| **l2-Distance**     | 23.5172       | **6.4136**      | 10.7668     |
+| **Brain**           |               |                 |             |
+| **SSIM**            | 0.2390        | **0.6674**      | 0.6150      |
+| **l2-Distance**     | 85.3408       | **35.1337**     | 37.7829     |
+| **Cardiac (Close)** |               |                 |             |
+| **SSIM**            | 0.4551        | **0.7682**      | 0.6921      |
+| **l2-Distance**     | 28.1078       | **13.6938**     | 19.0520     |
+
+![l1RegResults](/results/comparisonL1Image_goodcontrast.png)
+
+### L2-Regularized Reconstructions
+
+| Metric              | Gridded Recon | Monalisa l2-Reg | BART l2-Reg |
+| ------------------- | ------------- | --------------- | ----------- |
+| **Phantom**         |               |                 |             |
+| **SSIM**            | 0.2868        | **0.5247**      | 0.4779      |
+| **l2-Distance**     | 23.5172       | **17.7950**     | 18.8276     |
+| **Brain**           |               |                 |             |
+| **SSIM**            | 0.2390        | **0.6611**      | 0.6105      |
+| **l2-Distance**     | 85.3408       | **36.4645**     | 38.5181     |
+| **Cardiac (Close)** |               |                 |             |
+| **SSIM**            | 0.4551        | **0.7693**      | 0.6927      |
+| **l2-Distance**     | 28.1078       | **14.3118**     | 18.6575     |
+
 
 ![l2RegResults](/results/comparisonL2Image_goodcontrast.png)
