@@ -76,8 +76,6 @@ $$
 
    Iterative reconstructions are performed for both frameworks using 160 iterations to ensure convergence. Reconstructed images are rescaled to match the mean intensity of the ground truth within the ROI, and SSIM is computed for various regularization values to select the best-performing parameter.  
 
-![l1RegResults](/results/comparisonL1Image_goodcontrast.png)
-
 ---
 
 ## Repository Structure
