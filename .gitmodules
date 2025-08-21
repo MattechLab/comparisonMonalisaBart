@@ -1,3 +1,6 @@
 [submodule "bart"]
 	path = bart
 	url = https://github.com/mrirecon/bart.git
+[submodule "monalisa"]
+	path = monalisa
+	url = git@github.com:MattechLab/monalisa.git
