@@ -5,7 +5,7 @@ This repository provides a comparative analysis of Monalisa and BART reconstruct
 1. **Raw data transformation**: The raw data are synthetically generated in Monalisa format and require conversion. Although we made every effort to understand the BART data format, errors might exist. Some discussion about data format can be found here.  
 2. **Reconstruction commands**: In the absence of complete documentation, we explored BART's tutorials to understand the command-line interface. Again, mistakes might be present.  
 
-We would be grateful if anyone could spot potential mistakes. For any interested and motivated person, it might be valuable to create an unbiased website providing simulated raw data (and perhaps coil sensitivities) but **not** the ground truth. People could submit their implementations of iterative reconstructions to assess quality, potentially using a leaderboard format with Docker images returning reconstructed results.  
+We would be grateful if anyone could spot potential mistakes. For any interested and motivated person, it might be valuable to create an unbiased website providing simulated raw data (and perhaps coil sensitivities) but **not** the ground truth. People could submit their implementations of iterative reconstructions to assess quality, potentially using with Docker images returning reconstructed results, and a leaderboard scoring the different implementations, a bit like it is done with ML models.  
 
 ---
 
