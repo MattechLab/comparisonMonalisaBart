@@ -118,18 +118,36 @@ function lineSearchrecon(prefix, regtype, regvals)
         % Apply normalization if ROI mean of reconstruction is nonzero
         x = x * (image_mean_roi / x_mean_roi);
         pred = x;
+        % Allign the ground truth to the prediction to compute the metrics
+        % New: align ground truth magnitude to prediction magnitude
+        [pred_aligned_gt, a, b] = align_gt_to_recon_magnitude(image, x);
+
         % Compute L2 distance between ground truth image and predicted image
-        diff = image(:) - pred(:);
-        l2distance = sqrt(real(diff' * diff)); % handle complex values
+        %diff = image(:) - pred(:);
+        pred_mag = abs(pred);
+        aligned_gt_mag = abs(pred_aligned_gt);
+
+        diff_mags = (aligned_gt_mag(:) - pred_mag(:));
+        l2distance = norm(diff_mags);  % equivalent to sqrt(sum(diff.^2))
+
+        %diff = pred_aligned_gt(:) - pred(:);
+        %l2distance = sqrt(real(diff' * diff)); % we compute the l2 distance of the magnitude because of the alignment of the ground truth
 
         % Append the L2 distance and regularization parameter to the arrays
         l2_distances = [l2_distances, l2distance];
     
         % Compute SSIM of the magnitude of the prediction w.r.t. the
         % magnitude of the gt
-        pred_mag = abs(pred);
-        image_mag = abs(image);
-        ssim_value = ssim(pred_mag, image_mag);
+        
+        % Compute robust dynamic range from percentiles
+        lo = prctile(aligned_gt_mag(:), 0.5);
+        hi = prctile(aligned_gt_mag(:), 99.5);
+        L = hi - lo;
+        % SSIM with explicit dynamic range
+        ssim_value = ssim(double(pred_mag), double(aligned_gt_mag), 'DynamicRange', L);
+        %image_mag = abs(image);
+        %ssim_value = ssim(pred_mag, image_mag);
+
         ssim_values = [ssim_values, ssim_value];
     
     end

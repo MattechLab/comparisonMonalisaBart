@@ -1,13 +1,94 @@
+import scipy.io
 import numpy as np
 import subprocess
 import matplotlib.pyplot as plt
 from skimage.metrics import structural_similarity as ssim
+from scipy.io import loadmat
+from scipy.linalg import norm
 import json
 from datetime import datetime
 from bart.python import cfl  # Assuming the provided code is in a module called bart.py
 from matplotlib.patches import Ellipse
 import ipywidgets as widgets
 from IPython.display import display
+
+def readMatToNpArray(matfilepath):
+    # Load the .mat file
+    mat_data = scipy.io.loadmat(matfilepath)
+    # Extract the 'x' variable
+    x = mat_data['x']
+    # Convert to a NumPy array (if not already)
+    x_arr = np.array(x)
+    return x_arr
+
+import numpy as np
+from numpy.linalg import norm
+from skimage.metrics import structural_similarity as ssim
+
+def align_gt_to_recon_magnitude(gt, recon, mask=None):
+    """
+    Align ground-truth to reconstruction scale 
+    using least-squares affine mapping in the *magnitude (real) space*.
+    """
+    if mask is None:
+        mask = np.ones_like(gt, dtype=bool)
+
+    gt_vals = np.abs(gt[mask].ravel())
+    recon_vals = np.abs(recon[mask].ravel())
+
+    # Linear regression in real domain
+    # recon ≈ a*gt + b
+    cov = np.mean((gt_vals - gt_vals.mean()) * (recon_vals - recon_vals.mean()))
+    var = np.mean((gt_vals - gt_vals.mean())**2)
+    a = cov / var
+    b = recon_vals.mean() - a * gt_vals.mean()
+
+    gt_aligned = a * np.abs(gt) + b   # affine transform applied to magnitudes
+    return gt_aligned, a, b
+
+def compute_metrics(recon_images, groundtruths, mask=None, percentiles=(0.5, 99.5)):
+    """
+    Compute SSIM and L2 distance between reconstruction(s) and ground truth(s).
+    - Works for a single pair of arrays or a list/iterable of pairs.
+    - Aligns ground truth to reconstruction in magnitude space before computing metrics.
+    """
+    
+    # Helper to process one pair
+    def _compute_single(recon, gt):
+        mag_gt_aligned, _, _ = align_gt_to_recon_magnitude(gt, recon, mask=mask)
+        mag_recon = np.abs(recon)
+
+        # Choose ROI for robust dynamic range
+        if mask is None:
+            roi = mag_gt_aligned
+        else:
+            roi = mag_gt_aligned[mask]
+
+        lo, hi = np.percentile(roi, percentiles)
+        L = hi - lo
+
+        # SSIM
+        ssim_val = ssim(mag_recon, mag_gt_aligned, data_range=L)
+
+        # L2 distance
+        l2_distance = norm(mag_recon - mag_gt_aligned)
+
+        return ssim_val, l2_distance
+
+    # Case 1: Single image pair
+    if isinstance(recon_images, np.ndarray) and isinstance(groundtruths, np.ndarray):
+        ssim_val, l2_distance = _compute_single(recon_images, groundtruths)
+        return ssim_val, l2_distance
+
+    # Case 2: List or iterable of image pairs
+    else:
+        ssim_scores, l2_distances = [], []
+        for recon, gt in zip(recon_images, groundtruths):
+            ssim_val, l2_distance = _compute_single(recon, gt)
+            ssim_scores.append(ssim_val)
+            l2_distances.append(l2_distance)
+        return ssim_scores, l2_distances
+
 
 # Function to normalize an image based on the ROI
 def normalize_within_roi(image, groundtruth, roi_params, debug = False):
@@ -49,9 +130,38 @@ def normalize_within_roi(image, groundtruth, roi_params, debug = False):
     mean_recon = np.mean(image[mask])
     return image * (mean_gt / mean_recon)
 
+
+
+'''
+def compute_ssim_magnitude(gt, recon, mask=None, percentiles=(0.5, 99.5)):
+    """
+    Compute SSIM between reconstruction and GT for MRI data.
+    Alignment is performed in magnitude (real space), 
+    hence the gt mag is first aligned to the reconstruction mag
+    with a linear tranformation, then the SSIM is computed.
+    """
+    # Align GT magnitude to reconstruction magnitude
+    mag_gt_aligned, a, b = align_gt_to_recon_magnitude(gt, recon, mask=mask)
+
+    mag_recon = np.abs(recon)
+
+    if mask is None:
+        roi = mag_gt_aligned
+    else:
+        roi = mag_gt_aligned[mask]
+
+    lo, hi = np.percentile(roi, percentiles)
+    L = hi - lo
+    
+    ssim_val = ssim(mag_recon, mag_gt_aligned, data_range=L) # Data range uses quantiles to be more outlier robust
+    return ssim_val
+'''
 def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse_params=None, iterations = 160):
     """
     Evaluate the performance of BART reconstructions over a range of regularization parameters with ROI-based normalization.
+    1. Reconstruction
+    2. Normalize the recon to have the same average on the ROI then the ground truth
+    3. Compute aligned metrics (we first align the ground truth and then compute SSIM and L2 distance) 
 
     Parameters:
     - regvals (array-like): Search space for regularization parameters.
@@ -77,7 +187,6 @@ def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse
 
     # Load the ground truth image: need to adjust the naming convention
     groundtruth = cfl.readcfl(f'./bart_data/image_bart_{prefix}')
-
     # Initialize arrays to store metrics and commands
     l2_distances = []
     ssim_values = []
@@ -91,20 +200,26 @@ def evaluate_bart_reconstruction_with_roi(regvals, prefix, regtype="l2", ellipse
                 f"-p ./bart_data/weights_bart_{prefix}_scaled ./bart_data/kspace_bart_{prefix} ./bart_data/C_bart_{prefix} {regtype}reconweight"
             )
         elif regtype == 'l1':
-            bart_command = (
-                f"./bart/bart pics -R I:1:{regul_param} -i{iterations} -m -u {10*regul_param} -t ./bart_data/traj_bart_{prefix} "
+            bart_command = ( 
+                f"./bart/bart pics -R T:3:0:{regul_param} -i{iterations} -m -u {10*regul_param} -C4 -t ./bart_data/traj_bart_{prefix} "
                 f"-p ./bart_data/weights_bart_{prefix}_scaled ./bart_data/kspace_bart_{prefix} ./bart_data/C_bart_{prefix} {regtype}reconweight"
             )
-            
+#                f"./bart/bart pics -R I:0:{regul_param} -i{iterations} -m -u {10*regul_param} -t ./bart_data/traj_bart_{prefix} "
+#                f"-p ./bart_data/weights_bart_{prefix}_scaled ./bart_data/kspace_bart_{prefix} ./bart_data/C_bart_{prefix} {regtype}reconweight"
+        print(bart_command)
         subprocess.run(bart_command, shell=True)
         reconstructed = cfl.readcfl(f'{regtype}reconweight')
+        reconstructed = normalize_within_roi(reconstructed, groundtruth, ellipse_params) # This is not necessary it's just for display purposes
         plt.imshow(abs(reconstructed), cmap="gray")  # Use grayscale colormap
         plt.colorbar()  # Optional: Show color scale
         plt.axis("off")  # Hide axes
         plt.show()
-        reconstructed = normalize_within_roi(reconstructed, groundtruth, ellipse_params)
-        l2_distances.append(float(np.sqrt(np.sum((abs(groundtruth) - abs(reconstructed)) ** 2))))
-        ssim_values.append(float(ssim(abs(groundtruth), abs(reconstructed), data_range=abs(groundtruth).max() - abs(groundtruth).min())))
+        ssimval,l2dist = compute_metrics(reconstructed, groundtruth)
+        l2_distances.append(l2dist)
+        ssim_values.append(ssimval)
+        #l2_distances.append(float(np.sqrt(np.sum((abs(groundtruth) - abs(reconstructed)) ** 2))))
+        #ssim_values.append(compute_ssim_magnitude(groundtruth,reconstructed)) # This is not simply an SSIM it also contains the linear transformation
+        #ssim_values.append(float(ssim(abs(groundtruth), abs(reconstructed), data_range=abs(groundtruth).max() - abs(groundtruth).min())))
         bart_commands.append(bart_command)
     
     bestregval = regvals[np.argmax(ssim_values)]
