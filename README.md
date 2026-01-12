@@ -130,3 +130,28 @@ For both $l_1$ and $l_2$ iterative reconstructions, on all the three test exampl
 
 
 ![l2RegResults](/results/comparisonL2Image_goodcontrast.png)
+
+## Installation and Running the Code
+
+To successfully run the code in this repository, you need to install both **BART** and **Monalisa**.  
+
+> **Prerequisites:**  
+> - **Python** (required for BART)  
+> - **MATLAB** (required for Monalisa and running the scripts)
+
+The repository uses **Git submodules** to link the exact versions of BART and Monalisa that were used in the experiments.  
+
+You should follow the official installation instructions for each framework:
+
+- **Monalisa:** [Installation Guide](https://mattechlab.github.io/monalisa/1-2_installation.html)  
+- **BART:** [Installation Guide](https://bart-doc.readthedocs.io/en/latest/install.html)
+
+Once installation is complete, in MATLAB you just need to ensure that **Monalisa’s code is added to your MATLAB search path**, for example:
+
+```matlab
+addpath(genpath('/path/to/monalisa/src'));
+
+
+
+
+
